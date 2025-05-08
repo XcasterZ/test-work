@@ -9,17 +9,7 @@ use App\Models\User;
 
 class LoginController extends Controller
 {
-    /**
-     * แสดงฟอร์มล็อกอิน
-     */
-    public function showLoginForm()
-    {
-        return view('login');
-    }
 
-    /**
-     * ประมวลผลการล็อกอิน (ใช้รหัสผ่าน plain text)
-     */
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -27,32 +17,35 @@ class LoginController extends Controller
             'password' => 'required|string',
         ]);
 
-        // ดึง user จากฐานข้อมูลตาม username
         $user = User::where('username', $credentials['username'])->first();
 
-        // ตรวจสอบว่ามี user และรหัสผ่านตรงกัน (plain text)
         if ($user && $user->password === $credentials['password']) {
-            Auth::login($user, $request->boolean('remember'));
-            $request->session()->regenerate();
+            $token = $user->createToken('pornsawan')->plainTextToken;
 
-            return redirect()->intended('/');
+            return response()->json([
+                'message' => 'Login successful',
+                'user' => [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'password' => $user->password, 
+                ],
+                'token' => $token, 
+            ]);
         }
 
-        return back()->withErrors([
-            'username' => 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
-        ])->onlyInput('username');
+        return response()->json([
+            'message' => 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',
+        ], 401);
     }
 
-    /**
-     * ออกจากระบบ
-     */
+
     public function logout(Request $request)
     {
-        Auth::logout();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect('/');
+        $request->user()->currentAccessToken()->delete();
+        
+        return response()->json(['message' => 'Logged out successfully']);
     }
 }

@@ -136,9 +136,10 @@
                 </div>
 
                 <div class="mb-4">
-                    <label for="image" class="block text-gray-700 text-sm font-bold mb-2">รูปภาพสินค้า</label>
-                    <input type="file" id="image" name="image" required
+                    <label for="image" class="block text-gray-700 text-sm font-bold mb-2">รูปภาพสินค้า (ไม่เกิน 1MB)</label>
+                    <input type="file" id="image" name="image" required accept="image/*"
                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-sm text-gray-500 mt-1">ขนาดไฟล์สูงสุด: 1MB</p>
                 </div>
 
                 <button type="submit"
@@ -207,6 +208,25 @@
 
     <script>
         document.getElementById('productForm')?.addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('image');
+            const maxSize = 1 * 1024 * 1024; // 1MB
+
+            if (fileInput.files.length > 0) {
+                const fileSize = fileInput.files[0].size;
+                
+                if (fileSize > maxSize) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'ขนาดไฟล์เกินกำหนด!',
+                        text: 'กรุณาอัพโหลดไฟล์ขนาดไม่เกิน 1MB',
+                        icon: 'error',
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#3b82f6',
+                    });
+                    return;
+                }
+            }
+
             e.preventDefault();
 
             const form = e.target;

@@ -3,6 +3,10 @@
         Options -MultiViews -Indexes
     </IfModule>
 
+    # กำหนดขนาดไฟล์ upload สูงสุด
+    php_value upload_max_filesize 8M
+    php_value post_max_size 8M
+
     RewriteEngine On
 
     # Handle Authorization Header
@@ -18,4 +22,11 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+
+    RewriteEngine On
+    RewriteRule ^storage/(.*)$ /storage/app/public/$1 [L]
+
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>

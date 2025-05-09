@@ -31,4 +31,8 @@ return [
 
     'supports_credentials' => false,
 
+    'supports_credentials' => true,
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'allowed_origins' => ['https://keebkit-production.up.railway.app'],
+
 ];

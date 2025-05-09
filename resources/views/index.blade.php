@@ -35,10 +35,10 @@
                         </div>
                     </div>
                     @else
-                    <a href="{{ route('login') }}" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-gray-200 transition duration-300">
+                    <a href="{{ route('login.show') }}" class="py-2 px-2 font-medium text-gray-500 rounded hover:bg-gray-200 transition duration-300">
                         เข้าสู่ระบบ
                     </a>
-                    <a href="{{ route('register') }}" class="py-2 px-2 font-medium text-white bg-blue-500 rounded hover:bg-blue-400 transition duration-300">
+                    <a href="{{ route('register.show') }}" class="py-2 px-2 font-medium text-white bg-blue-500 rounded hover:bg-blue-400 transition duration-300">
                         สมัครสมาชิก
                     </a>
                     @endauth
@@ -76,8 +76,8 @@
                         </form>
                     </li>
                 @else
-                    <li><a href="{{ route('login') }}" class="block text-sm px-2 py-4 hover:bg-gray-200 transition duration-300">เข้าสู่ระบบ</a></li>
-                    <li><a href="{{ route('register') }}" class="block text-sm px-2 py-4 hover:bg-gray-200 transition duration-300">สมัครสมาชิก</a></li>
+                    <li><a href="{{ route('login.show') }}" class="block text-sm px-2 py-4 hover:bg-gray-200 transition duration-300">เข้าสู่ระบบ</a></li>
+                    <li><a href="{{ route('register.show') }}" class="block text-sm px-2 py-4 hover:bg-gray-200 transition duration-300">สมัครสมาชิก</a></li>
                 @endauth
             </ul>
         </div>

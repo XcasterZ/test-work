@@ -4,11 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard - เพิ่มสินค้า</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .swal2-confirm {
+            background-color: #3b82f6 !important;
+            border-color: #3b82f6 !important;
+        }
+
+        .swal2-confirm:hover {
+            background-color: #2563eb !important;
+        }
+
+        .swal2-cancel {
+            background-color: #ef4444 !important;
+            border-color: #ef4444 !important;
+            margin-right: 10px;
+        }
+
+        .swal2-cancel:hover {
+            background-color: #dc2626 !important;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-100">
+    @php
+        if(!auth()->user() || auth()->user()->role !== 'admin') {
+            header('Location: ' . route('home'));
+            exit;
+        }
+    @endphp
+
     <nav class="bg-white shadow-lg py-4 md:py-0">
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex justify-between">
@@ -29,7 +60,7 @@
                             class="flex items-center py-4 px-2 text-gray-700 hover:text-blue-500 transition duration-300">
                             <span class="font-semibold">หน้าแรก</span>
                         </a>
-                        
+
                     </div>
                 </div>
                 <div class="hidden md:flex items-center space-x-3">
@@ -48,7 +79,7 @@
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 py-20">
                 <a href="/"
                     class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-500 hover:bg-gray-50">หน้าแรก</a>
-                
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
@@ -74,7 +105,23 @@
                 </div>
             @endif
 
-            <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
+            @if (session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form id="productForm" action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="mb-4">
                     <label for="name" class="block text-gray-700 text-sm font-bold mb-2">ชื่อสินค้า</label>
@@ -140,19 +187,14 @@
                                             class="h-16 w-16 object-cover">
                                     </td>
                                     <td class="py-2 px-4 border-b border-gray-200">
-                                        <form action="{{ route('products.destroy', $product->id) }}" method="POST"
-                                            onsubmit="return confirm('คุณแน่ใจที่จะลบสินค้านี้หรือไม่?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-900">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </form>
+                                        <button type="button" data-product-id="{{ $product->id }}" class="deleteProductBtn text-red-600 hover:text-red-900">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -164,10 +206,142 @@
     </div>
 
     <script>
+        document.getElementById('productForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+
+            const loadingSwal = Swal.fire({
+                title: 'กำลังดำเนินการ...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const formData = new FormData(form);
+
+            axios.post(form.action, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => {
+                    loadingSwal.close();
+                    Swal.fire({
+                        title: 'สำเร็จ!',
+                        text: 'เพิ่มสินค้าเรียบร้อยแล้ว',
+                        icon: 'success',
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#3b82f6',
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                })
+                .catch(error => {
+                    loadingSwal.close();
+                    let errorMessage = 'เกิดข้อผิดพลาดในการเพิ่มสินค้า';
+
+                    if (error.response) {
+                        if (error.response.data.errors) {
+                            errorMessage = Object.values(error.response.data.errors).join('<br>');
+                        } else if (error.response.data.message) {
+                            errorMessage = error.response.data.message;
+                        }
+                    }
+
+                    Swal.fire({
+                        title: 'เกิดข้อผิดพลาด!',
+                        html: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#3b82f6',
+                    });
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                });
+        });
+
+        document.querySelectorAll('.deleteProductBtn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const productId = this.getAttribute('data-product-id');
+                const deleteUrl = "{{ route('products.destroy', ':id') }}".replace(':id', productId);
+
+                Swal.fire({
+                    title: 'คุณแน่ใจหรือไม่?',
+                    text: "คุณจะไม่สามารถกู้คืนสินค้านี้ได้!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3b82f6',
+                    cancelButtonColor: '#ef4444',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const deleteLoading = Swal.fire({
+                            title: 'กำลังลบ...',
+                            text: 'กรุณารอสักครู่',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        const formData = new FormData();
+                        formData.append('_method', 'DELETE');
+                        formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+                        
+                        axios.post(deleteUrl, formData, {
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        })
+                        .then(response => {
+                            deleteLoading.close();
+                            Swal.fire({
+                                title: 'ลบแล้ว!',
+                                text: 'ลบสินค้าเรียบร้อยแล้ว',
+                                icon: 'success',
+                                confirmButtonText: 'ตกลง',
+                                confirmButtonColor: '#3b82f6',
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        })
+                        .catch(error => {
+                            deleteLoading.close();
+                            console.error('Delete error:', error);
+                            
+                            let errorMessage = 'ไม่สามารถลบสินค้าได้';
+                            if (error.response && error.response.data && error.response.data.message) {
+                                errorMessage = error.response.data.message;
+                            }
+                            
+                            Swal.fire({
+                                title: 'เกิดข้อผิดพลาด!',
+                                text: errorMessage,
+                                icon: 'error',
+                                confirmButtonText: 'ตกลง',
+                                confirmButtonColor: '#3b82f6',
+                            });
+                        });
+                    }
+                });
+            });
+        });
+
         const btn = document.querySelector('.mobile-menu-button');
         const menu = document.querySelector('.mobile-menu');
 
-        btn.addEventListener('click', () => {
+        btn?.addEventListener('click', () => {
             menu.classList.toggle('hidden');
         });
     </script>
